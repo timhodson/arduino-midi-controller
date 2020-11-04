@@ -2,6 +2,8 @@
 
 Code for midi controller based on Ardunio Libraries
 
+Uses the excellent https://github.com/tttapa/Control-Surface library along with the usbmidi libraries.
+
 ## Pot-test-1
 
 This ardunio sketch sends midi messages to an XR18 mixer.
@@ -9,12 +11,14 @@ Both mixer and ardunio are connected to a Raspberry Pi which is acting as the hu
 
 Some of the midi cmmands directly map to hardware changes, the others are loading of a snapshot which then effectively toggles behaviour.
 
+There are custom buttons defined in the sketch which determine what values are sent for Control messages, or for program messages and allows different values on both down and up of the switch.
+
 ### Hardware
 
-- Leonardo Pro Micro
+- Leonardo Pro Micro - built in support for usb-midi.
 - Small breadboard and some jumper wire.
-- a potentiometer, 
-- a push button 
+- a potentiometer,
+- a push button
 - and a three position switch.
 
 ### Actions
