@@ -104,8 +104,12 @@ class MyPCButton : public MIDIOutputElement {
 
 END_CS_NAMESPACE
 
-USBMIDI_Interface midi;
+USBMIDI_Interface usbmidi;
+// Create a hardware midi serial output using the TX pin of the Arduino.
+HardwareSerialMIDI_Interface serialmidi = {Serial1, MIDI_BAUD};
 
+// Create a MIDI pipe factory to connect the MIDI interfaces to Control Surface
+BidirectionalMIDI_PipeFactory<2> pipes;
 
 // Create a new instance of the class `CCPotentiometer`, called `potentiometer`,
 // on pin A0, that sends MIDI messages with controller 7 (channel volume)
@@ -136,13 +140,13 @@ analog_t mappingFunction(analog_t raw) {
 MyCCButton ptt_button = {
   2,                       // Push button on pin 2
   {0x00, CHANNEL_2}, // Address on Channel
-  0x00, // on button down
-  0x7F // on button up
+  0x00, // on button down - unmute Audio Input 1
+  0x7F // on button up - mute Audio Input 1
 };
 
 CCButton mute_strip_1 = {
   4,
-  {0x00, CHANNEL_2}
+  {0x00, CHANNEL_2} // mute Audio Input 1
 };
 
 MyPCButton all_mute = {
@@ -152,18 +156,21 @@ MyPCButton all_mute = {
 };
 
 void setup() {
-    // Add the mapping function to the potentiometer
-    potentiometer.map(mappingFunction);
-    // Initialize everything
-    Control_Surface.begin();
-    Serial.begin(115200);
+  // Manually connect the MIDI interfaces to Control Surface
+  Control_Surface | pipes | usbmidi;
+  Control_Surface | pipes | serialmidi;
+  // Add the mapping function to the potentiometer
+  potentiometer.map(mappingFunction);
+  // Initialize everything
+  Control_Surface.begin();
+  Serial.begin(115200);
 }
 
 void loop() {
-    // Update the Control Surface (check whether the potentiometer's
-    // input has changed since last time, if so, send the new value over MIDI).
-    Control_Surface.loop();
-    // Use this to find minimumValue and maximumValue: it prints the raw value
-    // of the potentiometer, without the mapping function
+  // Update the Control Surface (check whether the potentiometer's
+  // input has changed since last time, if so, send the new value over MIDI).
+  Control_Surface.loop();
+  // Use this to find minimumValue and maximumValue: it prints the raw value
+  // of the potentiometer, without the mapping function
 //   Serial.println(potentiometer.getRawValue());
 }
