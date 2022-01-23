@@ -1,9 +1,10 @@
 #include <Control_Surface.h>
 
+// First Define some classes that will handle CC and PC button events.
 BEGIN_CS_NAMESPACE
 
 /*
- * @brief   A class for momentary buttons and switches that send MIDI events.
+ * @brief   A class for momentary buttons and switches that send MIDI Control Change (CC) events.
  *
  * The button is debounced, and the internal pull-up resistor is enabled.
  *
@@ -54,7 +55,7 @@ class MyCCButton : public MIDIOutputElement {
 
 
 /*
- * @brief   A class for momentary buttons and switches that send MIDI events.
+ * @brief   A class for momentary buttons and switches that send MIDI Program Change (PC) events.
  *
  * The button is debounced, and the internal pull-up resistor is enabled.
  *
@@ -104,6 +105,7 @@ class MyPCButton : public MIDIOutputElement {
 
 END_CS_NAMESPACE
 
+// now setup a midi interface on both Serial and USB
 USBMIDI_Interface usbmidi;
 // Create a hardware midi serial output using the TX pin of the Arduino.
 HardwareSerialMIDI_Interface serialmidi = {Serial1, MIDI_BAUD};
@@ -111,17 +113,18 @@ HardwareSerialMIDI_Interface serialmidi = {Serial1, MIDI_BAUD};
 // Create a MIDI pipe factory to connect the MIDI interfaces to Control Surface
 BidirectionalMIDI_PipeFactory<2> pipes;
 
+// Add our master volume control.
 // Create a new instance of the class `CCPotentiometer`, called `potentiometer`,
 // on pin A0, that sends MIDI messages with controller 7 (channel volume)
 // on channel 1.
-CCPotentiometer potentiometer = {
+CCPotentiometer main_potentiometer = {
   A0, {0x1F, CHANNEL_1}
 };
 
 // The filtered value read when potentiometer is at the 0% position
-constexpr analog_t minimumValue = 255;
+constexpr analog_t minimumValue = 0;
 // The filtered value read when potentiometer is at the 100% position
-constexpr analog_t maximumValue = 9300;
+constexpr analog_t maximumValue = 16383;
 
 // A mapping function to eliminate the dead zones of the potentiometer:
 // Some potentiometers don't output a perfect zero signal when you move them to
@@ -136,6 +139,7 @@ analog_t mappingFunction(analog_t raw) {
     // a 14-bit unsigned number
 }
 
+// Push to Talk button
 // Instantiate a MyCCButton object
 MyCCButton ptt_button = {
   2,                       // Push button on pin 2
@@ -144,6 +148,9 @@ MyCCButton ptt_button = {
   0x7F // on button up - mute Audio Input 1
 };
 
+
+// 3 way switch. pusitions up and down are mapped to pins 4 and 3
+// middle position is negative rail and pulls pin 3 down to ctivate on both rising and falling edge.
 CCButton mute_strip_1 = {
   4,
   {0x00, CHANNEL_2} // mute Audio Input 1
@@ -151,16 +158,21 @@ CCButton mute_strip_1 = {
 
 MyPCButton all_mute = {
   3,
-  {0x01, CHANNEL_1}, // snapshot 2
-  {0x02, CHANNEL_1}  // snapshot 3
+  {0x01, CHANNEL_1}, // snapshot 2 - unmute all
+  {0x02, CHANNEL_1}  // snapshot 3 - mute all
 };
+
+//TODO
+// encoder switch to select channel fader
+// pot to change fader volume.
+// pot to change send bus 5/6 level?
 
 void setup() {
   // Manually connect the MIDI interfaces to Control Surface
   Control_Surface | pipes | usbmidi;
   Control_Surface | pipes | serialmidi;
-  // Add the mapping function to the potentiometer
-  potentiometer.map(mappingFunction);
+  // Add the mapping function to the main_potentiometer
+  main_potentiometer.map(mappingFunction);
   // Initialize everything
   Control_Surface.begin();
   Serial.begin(115200);
@@ -171,6 +183,6 @@ void loop() {
   // input has changed since last time, if so, send the new value over MIDI).
   Control_Surface.loop();
   // Use this to find minimumValue and maximumValue: it prints the raw value
-  // of the potentiometer, without the mapping function
-//   Serial.println(potentiometer.getRawValue());
+  // of the given potentiometer, without the mapping function
+  //Serial.println(main_potentiometer.getRawValue());
 }
